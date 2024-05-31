@@ -1,0 +1,55 @@
+---
+version: '2.20.3'
+services:
+  dynamodblocal:
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+    image: "amazon/dynamodb-local:latest"
+    container_name: dynamodblocal
+    ports:
+      - ${DYNAMO_DB_PORT}:8000
+    volumes:
+      - ./dynamoDB/data:/home/dynamodblocal/data
+    working_dir: /home/dynamodblocal
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
+      AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+
+  dynamodb_admin:
+    image: aaronshaf/dynamodb-admin
+    container_name: dynamodb_admin
+    ports:
+      - ${DYNAMO_DB_ADMIN_PORT}:8001
+    environment:
+      DYNAMO_ENDPOINT: "http://dynamodblocal:8000"
+      AWS_REGION: "eu-central-1"
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    depends_on:
+      - dynamodblocal
+
+  init_dynamodb_schema:
+    image: amazon/aws-cli:latest
+    container_name: init_dynamodb_schema
+    depends_on:
+      - dynamodblocal
+    volumes:
+      - ./dynamoDB/scripts:/scripts
+    entrypoint: ['/bin/sh', '/scripts/init.sh']
+
+  mysql_db:
+    image: mysql/mysql-server
+    container_name: mysql_db
+    ports:
+      - ${MYSQL_DB_PORT}:3306
+    environment:
+      MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      MYSQL_USER: "root"
+      MYSQL_PASSWORD: "root"
+    healthcheck:
+      test: [ "CMD", "mysqladmin" ,"ping", "-h", "localhost" ]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+

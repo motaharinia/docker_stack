@@ -1,0 +1,75 @@
+---
+version: '2.20.3'
+services:
+  kafka_zookeeper:
+    image: confluentinc/cp-zookeeper:latest
+    container_name: kafka_zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - 2181:2181
+    healthcheck:
+      test: [ "CMD", "echo", "ruok", "|", "nc", "localhost", "2181", "|", "grep", "imok" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  kafka_broker:
+    image: confluentinc/cp-kafka:latest
+    container_name: kafka_broker
+    depends_on:
+      kafka_zookeeper:
+        condition: service_healthy
+    env_file:
+      - kafka/kafka.env
+    ports:
+      - ${KAFKA_BROKER_PORT}:9092
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: kafka_zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka_broker:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+#      KAFKA_MESSAGE_MAX_BYTES: 15728640
+#      KAFKA_REPLICA_FETCH_MAX_BYTES: 15728640
+#      KAFKA_PRODUCER_MAX_REQUEST_SIZE: 15728640
+#      KAFKA_CONSUMER_MAX_PARTITION_FETCH_BYTES: 15728640
+#      CONNECT_PRODUCER_MAX_REQUEST_SIZE: 15728640
+#      CONNECT_CONSUMER_MAX_PARTITION_FETCH_BYTES: 15728640
+
+  kafka_ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: kafka_ui
+    ports:
+      - ${KAFKA_UI_PORT}:8080
+    depends_on:
+      kafka_broker:
+        condition: service_healthy
+      kafka_zookeeper:
+        condition: service_healthy
+    environment:
+      DYNAMIC_CONFIG_ENABLED: true
+      KAFKA_CLUSTERS_0_NAME: Local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka_broker:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: kafka_zookeeper:2181
+    volumes:
+      - ~/.aws:/home/kafkaui/.aws
+
+  init_kafka_topics:
+    image: confluentinc/cp-kafka:latest
+    container_name: init_kafka_topics
+    depends_on:
+      kafka_broker:
+        condition: service_healthy
+    volumes:
+      - ./kafka/scripts:/scripts
+      - ./kafka/topics.yaml:/scripts/topics.yaml
+    entrypoint: ['/bin/sh', '/scripts/init.sh', '/scripts/topics.yaml', "product"]

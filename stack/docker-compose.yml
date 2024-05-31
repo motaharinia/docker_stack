@@ -1,0 +1,22 @@
+---
+version: '2.20.3'
+include:
+  - docker-compose-db.yml
+  - docker-compose-kafka.yml
+
+#you can replace localhost:5000 with your company docker registry
+services:
+  demo:
+    image: localhost:5000/demo:latest
+    pull_policy: always
+    container_name: demo
+    ports:
+      - ${DEMO_WEB_PORT}:8080
+    depends_on:
+      - mysql_db
+      - init_dynamodb_schema
+      - init_kafka_topics
+    volumes:
+      - ./logs/demo:/app/log
+      - ./configs/demo:/app/config
+    command: [ '--max-competitions -1' ]
