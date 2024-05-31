@@ -1,7 +1,7 @@
 ---
 version: '2.20.3'
 include:
-  - docker-compose-db.yml
+#  - docker-compose-db.yml
   - docker-compose-kafka.yml
 
 #you can replace localhost:5000 with your company docker registry
@@ -13,8 +13,8 @@ services:
     ports:
       - ${DEMO_WEB_PORT}:8080
     depends_on:
-      - mysql_db
-      - init_dynamodb_schema
+#      - mysql_db
+#      - init_dynamodb_schema
       - init_kafka_topics
     volumes:
       - ./logs/demo:/app/log

@@ -27,6 +27,11 @@ cd ./stack
 docker compose up
 ```
 
+### Check the Kafka topics
+```console
+http://localhost:9080
+```
+
 ### Check the demo service endpoint on your browser
 ```console
 http://localhost:8080
